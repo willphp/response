@@ -8,6 +8,7 @@
  | Copyright (c) 2020-2022, www.113344.com. All Rights Reserved.
  |-------------------------------------------------------------------------*/
 namespace willphp\response\build;
+use willphp\debug\Debug;
 /**
  * 响应处理
  * Class Base
@@ -33,8 +34,9 @@ class Base {
 		if (is_array($this->content)) {
 			header('Content-type: application/json;charset=utf-8');
 			return json_encode($this->content, JSON_UNESCAPED_UNICODE);
-		}		
-		return is_numeric($this->content) ? strval($this->content) : $this->content;
+		}	
+		$this->content = $this->addTrace($this->content);		
+		return $this->content;
 	}
 	/**
 	 * 直接响应内容
@@ -53,8 +55,13 @@ class Base {
 		if (is_null($res)) {
 			$res = $this->content;
 		}
-		if (is_scalar($res)) {
-			echo $res;
+		if (is_scalar($res)) {				
+			if (preg_match('/^http(s?):\/\//', $res)) {				
+				header('location:'.$res);
+			} else {				
+				$res = $this->addTrace($res); //添加Trace
+				echo $res;
+			}
 		} elseif (is_null($res)) {
 			return;
 		} else {
@@ -63,6 +70,20 @@ class Base {
 			exit();
 		}
 	}	
+	/**
+	 * 添加Trace到显示内容
+	 * @param $res 响应内容
+	 */
+	protected function addTrace($content = '') {		
+		$pos = strripos($content, '</body>');
+		$trace = Debug::getTrace();
+		if (false !== $pos) {
+			$content = substr($content, 0, $pos).$trace.substr($content, $pos);
+		} else {
+			$content = $content.$trace;
+		}
+		return $content;	
+	}
 	/**
 	 * 获取状态码
 	 * @return string
@@ -79,8 +100,8 @@ class Base {
 	public function __toString() {
 		$content = $this->getContent();
 		if (preg_match('/^http(s?):\/\//', $content)) {
-			header('location:' . $content);
-		}
+			header('location:'.$content);
+		}		
 		return $content ? $content : '';
 	}
 	/**
