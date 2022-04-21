@@ -8,6 +8,7 @@
  | Copyright (c) 2020-2022, www.113344.com. All Rights Reserved.
  |-------------------------------------------------------------------------*/
 namespace willphp\response\build;
+use willphp\middleware\Middleware;
 /**
  * 响应处理
  * Class Base
@@ -15,7 +16,8 @@ namespace willphp\response\build;
  */
 class Base {	
 	protected $code; //响应状态码	
-	protected $content; //响应内容	
+	protected $content; //响应内容
+	protected $output; //待输出响应内容
 	/**
 	 * 设置响应内容
 	 * @param $content
@@ -45,6 +47,9 @@ class Base {
 		$this->setContent($content);		
 		return $this;
 	}
+	public function setOutput($content = '') {
+		$this->output = $content;
+	}	
 	/**
 	 * 输出响应内容
 	 * @param $res 响应内容
@@ -52,12 +57,17 @@ class Base {
 	public function output($res = null) {
 		if (is_null($res)) {
 			$res = $this->content;
-		}
+		}	
+		if (is_object($res) && method_exists($res, '__toString')) {
+			$res = $res->__toString();
+		}		
 		if (is_scalar($res)) {				
 			if (preg_match('/^http(s?):\/\//', $res)) {				
 				header('location:'.$res);
-			} else {				
-				echo $res;
+			} else {
+				$this->output = $res;
+				Middleware::web('response_output', $this->output);
+				echo $this->output;
 			}
 		} elseif (is_null($res)) {
 			return;
@@ -86,7 +96,7 @@ class Base {
 			header('location:'.$content);
 		}		
 		return $content ? $content : '';
-	}
+	}	
 	/**
 	 * 返回json数据
 	 * @param string|array $data 数据
